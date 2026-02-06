@@ -19,6 +19,6 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "UpdatedListyCity"
+rootProject.name = "lab5_starter"
 include(":app")
  

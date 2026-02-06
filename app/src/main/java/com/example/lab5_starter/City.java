@@ -1,4 +1,6 @@
-package com.example.updatedlistycity;
+package com.example.lab5_starter;
+
+import androidx.annotation.NonNull;
 
 public class City implements java.io.Serializable  {
     private String name;
@@ -12,5 +14,11 @@ public class City implements java.io.Serializable  {
     }
     public String getProvince() {
         return province;
+    }
+
+    @NonNull
+    @Override
+    public String toString() {
+        return String.format("%s %s", this.name, this.province);
     }
 }

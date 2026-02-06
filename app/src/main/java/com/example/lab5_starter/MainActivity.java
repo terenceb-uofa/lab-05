@@ -1,6 +1,5 @@
-package com.example.updatedlistycity;
+package com.example.lab5_starter;
 
-import android.graphics.Color;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
@@ -14,16 +13,21 @@ import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import androidx.activity.EdgeToEdge;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.graphics.Insets;
-import androidx.core.view.ViewCompat;
-import androidx.core.view.WindowInsetsCompat;
+
+import com.google.firebase.Firebase;
+import com.google.firebase.firestore.CollectionReference;
+import com.google.firebase.firestore.DocumentReference;
+import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.QueryDocumentSnapshot;
 
 import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.Objects;
 
 public class MainActivity extends AppCompatActivity implements AddCityFragment.AddCityDialogListener {
+
+    private FirebaseFirestore db;
+    private CollectionReference citiesRef;
 
     private EditText cityInput;
     private Button deleteButton;
@@ -46,6 +50,9 @@ public class MainActivity extends AppCompatActivity implements AddCityFragment.A
         initViews();
         //Setup the patched array adapter
         setupAdapter();
+        //Setup the Datalist and Firestore Listener
+        initDatalist();
+
         //Input Listeners
         setupListeners();
 
@@ -72,16 +79,30 @@ public class MainActivity extends AppCompatActivity implements AddCityFragment.A
     }
 
 
+    private void initDatalist(){
+        db = FirebaseFirestore.getInstance();
+        citiesRef = db.collection("cities");
+
+        citiesRef.addSnapshotListener((value, error) -> {
+            if (error != null){
+                Log.e("Firestore", error.toString());
+            }
+            if (value != null && !value.isEmpty()){
+                dataList.clear();
+                for (QueryDocumentSnapshot snapshot: value){
+                    String name = snapshot.getString("name");
+                    String province = snapshot.getString("province");
+
+                    dataList.add(new City(name, province));
+                }
+
+                cityAdapter.notifyDataSetChanged();
+            }
+        });
+    }
+
     private  void setupAdapter(){
-        String[] cities = { "Edmonton", "Vancouver", "Toronto" };
-        String[] provinces = { "AB", "BC", "ON" };
-
-        dataList = new ArrayList<City>();
-        for (int i = 0; i < cities.length; i++) {
-            dataList.add(new City(cities[i], provinces[i]));
-        }
-
-
+        dataList = new ArrayList<>();
         //Patching the array adapter class on assignment
         cityAdapter = new ArrayAdapter<City>(this, R.layout.content, R.id.city_text , dataList) {
 
@@ -162,13 +183,49 @@ public class MainActivity extends AppCompatActivity implements AddCityFragment.A
     public void addCity(City city) {
         cityAdapter.add(city);
         cityAdapter.notifyDataSetChanged();
+
+        DocumentReference docRef = citiesRef.document(city.getName());
+        docRef.set(city);
     }
 
     @Override
-    public void editCity(City city, int index) {
+    public void editCity(City newCity, int index) {
+
+        City oldCity = dataList.get(selectedIndex);
+        String oldName = oldCity.getName();
+        String newName = newCity.getName();
+
+        if (!Objects.equals(oldName, newName)){
+            //document id has changed, delete old document, create a new one
+            citiesRef.document(oldName).delete();
+            citiesRef.document(newName).set(newCity);
+        }else{
+            //Just edit fields;
+            citiesRef.document(oldName).set(newCity);
+        }
+
         //set to replace an existing city
-        dataList.set(index, city);
+        dataList.set(index, newCity);
         cityAdapter.notifyDataSetChanged();
+    }
+
+    @Override
+    public void deleteCity(){
+        if (selectedIndex == -1) return;
+        City cityToDelete = dataList.get(selectedIndex);
+
+        citiesRef.document(cityToDelete.getName()).delete()
+                .addOnSuccessListener(ret -> {
+                    Toast.makeText(this, String.format( "%s was deleted from DB", cityToDelete.getName()), Toast.LENGTH_SHORT).show();
+                })
+                .addOnFailureListener(e -> {
+                    Log.w("Firestore", "Error deleting document", e);
+                    Toast.makeText(this, "Error in deleting city", Toast.LENGTH_SHORT).show();
+                });
+         //immediate feedback
+        dataList.remove(selectedIndex);
+        selectedIndex = -1;              // reset to no selection
+        cityAdapter.notifyDataSetChanged(); // re-render cities
     }
 }
 

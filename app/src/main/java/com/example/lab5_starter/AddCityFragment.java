@@ -1,4 +1,4 @@
-package com.example.updatedlistycity;
+package com.example.lab5_starter;
 
 import android.app.AlertDialog;
 import android.app.Dialog;
@@ -16,6 +16,8 @@ public class AddCityFragment extends DialogFragment {
     interface AddCityDialogListener {
         void addCity(City city);
         void editCity(City city, int index);
+
+        void  deleteCity();
     }
     private AddCityDialogListener listener;
 
@@ -60,6 +62,9 @@ public class AddCityFragment extends DialogFragment {
         return builder
                 .setView(view)
                 .setTitle(title)
+                .setNeutralButton(existingCity != null? "Delete": null, (dialog, which) ->{
+                    listener.deleteCity();
+                })
                 .setNegativeButton("Cancel", null)
                 .setPositiveButton(existingCity != null ? "Update" : "Add", (dialog, which) -> {
                     String cityName = editCityName.getText().toString();
@@ -70,6 +75,7 @@ public class AddCityFragment extends DialogFragment {
                     } else {
                         listener.addCity(newCity); // ADD mode
                     }
+
 
                 })
                 .create();
